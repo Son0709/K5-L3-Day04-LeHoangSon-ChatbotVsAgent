@@ -41,15 +41,19 @@ def get_weather(city: str, date: str) -> dict:
 
 # ---------------------------------------------------------------- tool 3
 def recommend_outfit(temp_high_c: float, rain_probability: float) -> dict:
-    # TODO 1: viết tool gợi ý trang phục (slide 34). Luật:
-    #   - rain_probability không nằm trong [0, 1] -> raise ValueError với lời nhắn hướng dẫn sửa
-    #     (vd. "rain_probability phải từ 0 đến 1, nhận 70. 70% thì truyền 0.7.")
-    #     run_tool() sẽ đổi lỗi này thành "ERROR: ..." để agent đọc và tự gọi lại cho đúng.
-    #   - temp_high_c > 30         -> gợi ý "áo thun mỏng, vải cotton"
-    #     ngược lại                -> gợi ý "trang phục thoải mái, mang áo khoác nhẹ"
-    #   - rain_probability > 0.5   -> thêm "ô gập hoặc áo mưa"
-    #   - Trả về dict: {"items": [ ...các gợi ý... ]}
-    raise NotImplementedError("TODO 1")
+    if not 0 <= rain_probability <= 1:
+        raise ValueError(
+            f"rain_probability phải từ 0 đến 1, nhận {rain_probability}. "
+            f"Nếu là phần trăm thì chia cho 100 (vd. 70% thì truyền 0.7)."
+        )
+    items = []
+    if temp_high_c > 30:
+        items.append("áo thun mỏng, vải cotton")
+    else:
+        items.append("trang phục thoải mái, mang áo khoác nhẹ")
+    if rain_probability > 0.5:
+        items.append("ô gập hoặc áo mưa")
+    return {"items": items}
 
 
 # ---------------------------------------------------------------- schema
@@ -74,12 +78,22 @@ TOOLS = [
             "required": ["city", "date"],
         },
     },
-    # TODO 2: khai báo schema cho recommend_outfit, cùng dạng với get_weather ở trên.
-    #   - "name": "recommend_outfit"
-    #   - "description": tool làm gì, KHI NÀO gọi (sau get_weather), trả về gì
-    #   - "input_schema": 2 tham số temp_high_c và rain_probability, đều là "number",
-    #     mỗi tham số có description ghi rõ đơn vị (°C; 0.0-1.0, KHÔNG phải %), và có "required".
-    # Thiếu schema này thì model không biết tool tồn tại, dù hàm đã viết xong.
+    {
+        "name": "recommend_outfit",
+        "description": "Recommend what to wear based on the weather. Call this AFTER get_weather, "
+                       "passing its temp_high_c and rain_probability. "
+                       "Returns JSON: {\"items\": [list of clothing/accessory suggestions in Vietnamese]}.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "temp_high_c": {"type": "number", "description": "Highest temperature of the day in °C."},
+                "rain_probability": {"type": "number",
+                                     "description": "Chance of rain as a fraction from 0.0 to 1.0, NOT a percent "
+                                                    "(70% must be passed as 0.7)."},
+            },
+            "required": ["temp_high_c", "rain_probability"],
+        },
+    },
 ]
 
 FUNCTIONS = {
