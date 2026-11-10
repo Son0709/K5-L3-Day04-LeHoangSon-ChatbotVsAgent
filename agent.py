@@ -115,7 +115,10 @@ def _normalize(text: str) -> str:
     return text.replace("‑", "-").replace("–", "-")
 
 
-def run_agent(question: str) -> str:
+def run_agent(question: str, on_event=None) -> str:
+    """Chạy agent. on_event(kind, step, payload) (tùy chọn) được gọi mỗi bước để UI hiển thị trace:
+    kind = "thought" | "action" | "observation"."""
+    emit = on_event or (lambda *_: None)
     messages = [{"role": "user", "content": question}]
 
     for step in range(1, MAX_ITERATIONS + 1):
@@ -127,12 +130,15 @@ def run_agent(question: str) -> str:
             return _normalize(text)
 
         print(f"Thought {step}: {text}")
+        emit("thought", step, text)
         results = []
         for b in response.content:
             if b.type == "tool_use":
                 print(f"Action {step}: {b.name}({b.input})")
+                emit("action", step, {"tool": b.name, "args": b.input})
                 result = run_tool(b.name, b.input)                        # Observation
                 print(f"Observation {step}: {result}")
+                emit("observation", step, result)
                 results.append({"type": "tool_result", "tool_use_id": b.id, "content": result})
         messages.append({"role": "user", "content": results})
 
